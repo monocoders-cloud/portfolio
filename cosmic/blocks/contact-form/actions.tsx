@@ -1,11 +1,10 @@
 "use server";
 
 import { cosmic } from "@/cosmic/client";
-import { Resend } from "resend";
-const RESEND_KEY = process.env.RESEND_API_KEY;
+
+const RESEND_KEY = process.env.RESEND_API_KEY!;
 const CONTACT_EMAIL =
   process.env.CONTACT_EMAIL || "change_to_your_email@example.com";
-const resend = new Resend(RESEND_KEY);
 
 export type AddSubmissionType = {
   type: "form-submissions";
@@ -18,12 +17,16 @@ export type AddSubmissionType = {
 };
 
 export async function addSubmission(comment: AddSubmissionType) {
-  const { metadata: metadata, title } = comment;
+  const { metadata, title } = comment;
+
+  // Save to Cosmic
   const data = await cosmic.objects.insertOne(comment);
+
+  // Build emails
   const submitterSubject = `Form submission received`;
   const submitterHTML = `
     Hello ${title},<br/><br/>
-    This is a message to confirm that we have received your form submission with the following information:<br/><br/>
+    This is a message to confirm that we have received your form submission:<br/><br/>
     Name: ${title}<br/>
     Email: ${metadata.email}<br/>
     Company: ${metadata.company}<br/>
@@ -31,7 +34,17 @@ export async function addSubmission(comment: AddSubmissionType) {
     <br/>
     A representative will be in touch with you soon.
   `;
-  // Send confirmation email
+
+  const adminSubject = `${title} submitted the form`;
+  const adminHTML = `
+    ${title} submitted the contact form:<br/><br/>
+    Name: ${title}<br/>
+    Email: ${metadata.email}<br/>
+    Company: ${metadata.company}<br/>
+    Message: ${metadata.message}<br/>
+  `;
+
+  // Send both emails
   await sendEmail({
     to: metadata.email,
     from: CONTACT_EMAIL,
@@ -39,15 +52,7 @@ export async function addSubmission(comment: AddSubmissionType) {
     subject: submitterSubject,
     html: submitterHTML,
   });
-  const adminSubject = `${title} submitted the form`;
-  const adminHTML = `
-    ${title} submitted the contact form with the following information:<br/><br/>
-    Name: ${title}<br/>
-    Email: ${metadata.email}<br/>
-    Company: ${metadata.company}<br/>
-    Message: ${metadata.message}<br/>
-  `;
-  // Send email to admin
+
   await sendEmail({
     to: CONTACT_EMAIL,
     from: CONTACT_EMAIL,
@@ -55,6 +60,7 @@ export async function addSubmission(comment: AddSubmissionType) {
     subject: adminSubject,
     html: adminHTML,
   });
+
   return data;
 }
 
@@ -71,12 +77,15 @@ async function sendEmail({
   html: string;
   reply_to: string;
 }) {
-  const data = await resend.emails.send({
+  // ⬇️ Import Resend only at runtime (server)
+  const { Resend } = await import("resend");
+  const resend = new Resend(RESEND_KEY);
+
+  return resend.emails.send({
     from,
     to,
     subject,
     html,
     replyTo: reply_to,
   });
-  return data;
 }

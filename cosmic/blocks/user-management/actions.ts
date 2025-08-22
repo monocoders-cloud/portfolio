@@ -4,10 +4,7 @@ import crypto from "crypto";
 import { cookies } from "next/headers";
 import { cosmic } from "@/cosmic/client";
 import bcrypt from "bcryptjs";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
+const RESEND_KEY = process.env.RESEND_API_KEY!;
 function isValidPassword(password: string): boolean {
   return (
     password.length >= 8 && /[A-Za-z]/.test(password) && /[0-9]/.test(password)
@@ -16,6 +13,8 @@ function isValidPassword(password: string): boolean {
 
 export async function signUp(formData: FormData) {
   try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(RESEND_KEY);
     const email = (formData.get("email") as string).toLowerCase();
     const password = formData.get("password") as string;
     const firstName = formData.get("firstName") as string;
@@ -228,6 +227,8 @@ async function uploadFile(file: File) {
 
 export async function updateUserProfile(userId: string, formData: FormData) {
   try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(RESEND_KEY);
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;
     const email = (formData.get("email") as string).toLowerCase();
@@ -347,6 +348,8 @@ export async function verifyEmail(code: string) {
 
 export async function forgotPassword(formData: FormData) {
   try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(RESEND_KEY);
     const email = (formData.get("email") as string).toLowerCase();
 
     // Check if user exists
